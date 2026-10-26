@@ -34,9 +34,9 @@ npm install --global @lmctl-ai/lmctl@0.2.420
    `for (item in shop.items())`. `Ledger.record(Money)` and `Money.set(int)` return `self`; `Ledger.note(string)`
    returns `Value.none()`.
 7. **Include standard and testing functions deliberately.** `new Registry()` installs the standard `string`,
-   `math`, `collections`/`containers`, `json` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)`
+   `encoding`, `math`, `collections`/`containers`, `json` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)`
    opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.py)
-   verifies that all 171 standard signatures and all 45 host signatures are imported by the corpus.
+   verifies that all 181 standard signatures and all 45 host signatures are imported by the corpus.
 8. **Compile, never interpret source in the host.** [Program wrappers](sample-suite/programs) use
    `_lmcode_` and `savedsl`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
    verifies the exact schema SHA-256 and binds every import before execution.
@@ -75,9 +75,9 @@ npm install --global @lmctl-ai/lmctl@0.2.420
 | While, range, inline fn, switches | 005–008, 036, 039, 043, 045 |
 | Host overloads, objects, operators, conversion, chaining, void methods | 009–014, 034–035, 040 |
 | Pure host function `fee(int)` | 002 |
-| Every std collection method | 015–018, 037–038, 101–104 |
+| Every std collection method | 015–018, 037–038, 101–104, 302–303, 312 |
 | Every std math overload + all 18 intrinsic math operations | 019–020, 025, 048 |
-| Every std string function and conversion | 021–023 |
+| Every std string function, conversion and byte codec | 021–023, 301, 304–305, 311, 313 |
 | Every std file function | 024 |
 | Located VM/host errors, testing failure and application rule | 026–033 |
 | int64 wrap/overflow, actual short-circuiting, host foreach | 041–044 |
@@ -85,15 +85,17 @@ npm install --global @lmctl-ai/lmctl@0.2.420
 | Native boundary conversions, 1 MiB strings, handles, 255 args, deep inline | 049–066 |
 | Bad magic/schema/import binding rejection | 090–092 |
 | JSON navigation/types and typed map/stack/queue/priority queues | 101–108 |
+| Compiler list/map/JSON literals (`%w`, `%i`, `%f`, `%{...}`, `%json{...}`) | 201–205 |
+| Strict Base64/hex byte codecs and independent map `keys()`/`values()` snapshots | 301–305, 311–313 |
 
 See [sample-suite/README.md](sample-suite/README.md) for links to every program source, compiled `.dslb`, and expected output.
 
 ```text
 PASS SDK and suite locks
-PASS: all 171 standard signatures are imported by the corpus
+PASS: all 181 standard signatures are imported by the corpus
 PASS: all 45 host signatures are imported by the corpus
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 77/77 sample cases
+PASS 90/90 sample cases
 PASS compiler reproduces all pinned bytecode
 ```
 
@@ -101,8 +103,8 @@ PASS compiler reproduces all pinned bytecode
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 77 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 77 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 90 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 90 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
