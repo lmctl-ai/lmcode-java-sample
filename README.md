@@ -34,9 +34,9 @@ npm install --global @lmctl-ai/lmctl@0.2.420
    `for (item in shop.items())`. `Ledger.record(Money)` and `Money.set(int)` return `self`; `Ledger.note(string)`
    returns `Value.none()`.
 7. **Include standard and testing functions deliberately.** `new Registry()` installs the standard `string`,
-   `math`, `collections` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)` opts into
-   `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.py)
-   verifies that all 72 standard signatures and all 27 host signatures are imported by the corpus.
+   `math`, `collections`/`containers`, `json` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)`
+   opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.py)
+   verifies that all 171 standard signatures and all 45 host signatures are imported by the corpus.
 8. **Compile, never interpret source in the host.** [Program wrappers](sample-suite/programs) use
    `_lmcode_` and `savedsl`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
    verifies the exact schema SHA-256 and binds every import before execution.
@@ -62,7 +62,9 @@ npm install --global @lmctl-ai/lmctl@0.2.420
 | `Money`, `Items`, `Shop`, `Ledger` | `Object` (`Value.object(type, obj)`, `Value.asObject()`) | Opaque host-owned Java reference tagged with its schema type name; `==` compares reference identity, not field equality. |
 | `returns: "self"` | Receiver `Value` (`return self;`) | Normalized to the owner type in signatures (`Money.set`, `Ledger.record`) and returns the mutated receiver handle for chaining. |
 | `void` | `Value.none()` (`Value.Kind.NONE`) | Returned by `void` functions and methods; the VM pushes nothing onto the operand stack. |
-| `StrList`, `IntList`, `FloatList`, `StrMap` | `StdCollections` per-run arena (`Stdlib.collectionValues`, `Stdlib.mapEntries`) | Created and invalidated automatically per `Program.run` by the SDK registry; expired handles throw `RUN_HOST`. |
+| `StrList`, `IntList`, `FloatList`, `StrMap` | `StdCollections` per-run arena (`Stdlib.collectionValues`, `Stdlib.mapEntries`, `Stdlib.make*`) | Created and invalidated automatically per `Program.run` by the SDK registry; expired handles throw `RUN_HOST`. |
+| `IntMap`, `FloatMap`, `{Int,Float,Str}{Stack,Queue,PQ}` | `StdContainers` per-run arena (`StdCollections.obj`) | Insertion-ordered typed maps, LIFO stacks, FIFO queues (`len`/`at` in pop order) and stable min-first priority queues sharing the 65,536-object run budget. |
+| `Json` (`json_parse`) | `StdJson.Node` in per-run arena | Immutable strict UTF-8 JSON (depth $\le 256$, `int64` integers, finite `binary64` floats, raw token spelling preserved in `to_json()`, borrowed child navigation). |
 | Errors (`RUN_HOST`, `RUN_ERROR`, `LOAD_*`, `APP_FAIL`) | `VmException` (`VmException.host(msg)`, `Reports.error`, `Reports.appFailure`) | Host callbacks throw `VmException.host(msg)` (`RUN_HOST`, exit `3`) and the VM attaches `dsl line L:C: `; domain checks after `run()` call `Reports.appFailure(msg)` (`APP_FAIL`, exit `4`). |
 
 ## Feature coverage
@@ -73,23 +75,25 @@ npm install --global @lmctl-ai/lmctl@0.2.420
 | While, range, inline fn, switches | 005–008, 036, 039, 043, 045 |
 | Host overloads, objects, operators, conversion, chaining, void methods | 009–014, 034–035, 040 |
 | Pure host function `fee(int)` | 002 |
-| Every std collection method | 015–018, 037–038 |
+| Every std collection method | 015–018, 037–038, 101–104 |
 | Every std math overload + all 18 intrinsic math operations | 019–020, 025, 048 |
 | Every std string function and conversion | 021–023 |
 | Every std file function | 024 |
 | Located VM/host errors, testing failure and application rule | 026–033 |
 | int64 wrap/overflow, actual short-circuiting, host foreach | 041–044 |
 | Raw/dedented inner heredocs and all four outer splice types | 046–047 |
-| Bad magic/schema binding rejection | 090–091 |
+| Native boundary conversions, 1 MiB strings, handles, 255 args, deep inline | 049–066 |
+| Bad magic/schema/import binding rejection | 090–092 |
+| JSON navigation/types and typed map/stack/queue/priority queues | 101–108 |
 
 See [sample-suite/README.md](sample-suite/README.md) for links to every program source, compiled `.dslb`, and expected output.
 
 ```text
 PASS SDK and suite locks
-PASS: all 72 standard signatures are imported by the corpus
-PASS: all 27 host signatures are imported by the corpus
+PASS: all 171 standard signatures are imported by the corpus
+PASS: all 45 host signatures are imported by the corpus
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 50/50 sample cases
+PASS 77/77 sample cases
 PASS compiler reproduces all pinned bytecode
 ```
 
@@ -97,8 +101,8 @@ PASS compiler reproduces all pinned bytecode
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 50 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 50 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 77 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 77 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
