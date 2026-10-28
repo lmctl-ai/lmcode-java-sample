@@ -1,6 +1,6 @@
 {
   "repo": "lmctl-ai/lmcode-java",
-  "commit": "1cd544726e486b0d892bd07c1dc29e1eebe06e46",
+  "commit": "3647629ebeb09eb40ca260727cb048d04a77b469",
   "sha256": {
     "LICENSE": "e25615ca259eca3930ca632e9c5b959692b164b31c4e66ba453b8aa8e81705d7",
     "src/main/java/io/lmctl/lmcode/Context.java": "81721af238bb9e0dd00a7ce98d9ff2ed4b77f167ef19e85c9c08370aa3f3a836",

@@ -11,12 +11,18 @@ npm install --global @lmctl-ai/lmctl@0.2.420
 ./test.sh
 ```
 
+Case 067 uses R47/R48 rule methods; reproducing its pinned bytecode needs a rule-methods-capable compiler,
+so set `LMSCRIPT_BIN` to a current lmctl-mono `lmscript` build until a containing release is published
+(see [sample-suite/README.md](sample-suite/README.md)). Runtime execution of the pinned bytecode works on
+any compiler version, since annotations and interface bindings are compile-time metadata only.
+
 ## Write a host in Java in ten steps
 
 1. **Choose a small domain.** `ShopState` owns three priced items (`[125, 250, 375]`); `Ledger` records
    entries; `Money` is signed `int64` cents (`long`). Read [the portable contract](sample-suite/CONTRACT.md).
 2. **Declare the API.** [host.schema.json](sample-suite/host.schema.json) declares contexts (`shop`, `ledger`),
-   four object types (`Money`, `Items`, `Shop`, `Ledger`), `Currency`, exact overloads and void methods.
+   four object types (`Money`, `Items`, `Shop`, `Ledger`), `Currency`, exact overloads, void methods and one SAM
+   interface (`Adjuster`, `(Money) -> void`) under `interfaces`.
    [sample.dsl.json](sample-suite/sample.dsl.json) merges that domain with the standard catalog.
 3. **Pin dependencies.** [sdk.lock](sdk.lock) and [suite.lock](suite.lock) hash every vendored file;
    `python3 scripts/sync.py check` rejects drift. [pom.xml](pom.xml) compiles `vendor/lmcode-java/src/main/java`
@@ -83,6 +89,7 @@ npm install --global @lmctl-ai/lmctl@0.2.420
 | int64 wrap/overflow, actual short-circuiting, host foreach | 041–044 |
 | Raw/dedented inner heredocs and all four outer splice types | 046–047 |
 | Native boundary conversions, 1 MiB strings, handles, 255 args, deep inline | 049–066 |
+| `@NAME` rule method annotation and `implements` SAM interface | 067 |
 | Bad magic/schema/import binding rejection | 090–092 |
 | JSON navigation/types and typed map/stack/queue/priority queues | 101–108 |
 | Compiler list/map/JSON literals (`%w`, `%i`, `%f`, `%{...}`, `%json{...}`) | 201–205 |
@@ -94,17 +101,18 @@ See [sample-suite/README.md](sample-suite/README.md) for links to every program 
 PASS SDK and suite locks
 PASS: all 181 standard signatures are imported by the corpus
 PASS: all 45 host signatures are imported by the corpus
+PASS 2 compiler rejection case(s), exit 2
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 90/90 sample cases
-PASS compiler reproduces all pinned bytecode
+PASS 91/91 sample cases
+PASS compiler reproduces 91/91 pinned bytecode cases
 ```
 
 ## Running and updating
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 90 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 90 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 91 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 91 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
