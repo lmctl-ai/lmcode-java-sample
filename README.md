@@ -10,9 +10,9 @@ Python 3 and a v6-entries-capable `lmscript` (Node >= 24.15).
 LMSCRIPT_BIN=/path/to/v6-entries-capable/lmscript ./test.sh
 ```
 
-The corpus is DSLB v6 (R49 rule entries): reproducing the pinned bytecode needs the v6-entries compiler
-from lmctl-mono, so set `LMSCRIPT_BIN` to its built `lmscript` — published releases (including the first
-rule-methods-capable `@lmctl-ai/lmctl@0.2.442`) cannot reproduce the v6 corpus yet
+The corpus is DSLB v6 (R49 rule entries), first published as `@lmctl-ai/lmctl` 0.2.444, which reproduces
+every pinned `.dslb` byte-for-byte; 0.2.442/0.2.443 accept the rule syntax but still write v5. Set
+`LMSCRIPT_BIN` to a development lmscript build only when testing unreleased compiler work
 (see [sample-suite/README.md](sample-suite/README.md)). The vendored v6 SDK runs the pinned bytes directly
 and refuses v5 files at load (093).
 
