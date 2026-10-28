@@ -228,6 +228,20 @@ public final class Shop {
     return context;
   }
 
+  /** Rule-entry dispatch handles (CONTRACT.md): the shop's items in order. */
+  public List<Money> itemHandles() {
+    return shop.items.values;
+  }
+
+  /** The same total the Shop.total() callback computes, as a fresh Money handle. */
+  public Value totalHandle() {
+    long total = 0;
+    for (Money item : shop.items.values) {
+      total += item.cents;
+    }
+    return money(total);
+  }
+
   private Value money(long cents) {
     Money created = new Money(cents);
     arena.add(created);
