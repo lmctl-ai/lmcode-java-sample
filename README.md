@@ -4,25 +4,25 @@
 Read these two files first: [domain and bindings](src/main/java/io/lmctl/sample/Shop.java) and
 [CLI protocol](src/main/java/io/lmctl/sample/Main.java). The Java SDK (`io.lmctl.lmcode`) is vendored
 from `lmctl-ai/lmcode-java` with zero external Maven dependencies; the host needs only JDK 21, Maven,
-Python 3 and `lmscript >= 0.2.420` (Node >= 24.15).
+Python 3 and a v6-entries-capable `lmscript` (Node >= 24.15).
 
 ```sh
-npm install --global @lmctl-ai/lmctl@0.2.420
-./test.sh
+LMSCRIPT_BIN=/path/to/v6-entries-capable/lmscript ./test.sh
 ```
 
-Case 067 uses R47/R48 rule methods; reproducing its pinned bytecode needs a rule-methods-capable compiler,
-so set `LMSCRIPT_BIN` to a current lmctl-mono `lmscript` build until a containing release is published
-(see [sample-suite/README.md](sample-suite/README.md)). Runtime execution of the pinned bytecode works on
-any compiler version, since annotations and interface bindings are compile-time metadata only.
+The corpus is DSLB v6 (R49 rule entries): reproducing the pinned bytecode needs the v6-entries compiler
+from lmctl-mono, so set `LMSCRIPT_BIN` to its built `lmscript` — published releases (including the first
+rule-methods-capable `@lmctl-ai/lmctl@0.2.442`) cannot reproduce the v6 corpus yet
+(see [sample-suite/README.md](sample-suite/README.md)). The vendored v6 SDK runs the pinned bytes directly
+and refuses v5 files at load (093).
 
 ## Write a host in Java in ten steps
 
 1. **Choose a small domain.** `ShopState` owns three priced items (`[125, 250, 375]`); `Ledger` records
    entries; `Money` is signed `int64` cents (`long`). Read [the portable contract](sample-suite/CONTRACT.md).
 2. **Declare the API.** [host.schema.json](sample-suite/host.schema.json) declares contexts (`shop`, `ledger`),
-   four object types (`Money`, `Items`, `Shop`, `Ledger`), `Currency`, exact overloads, void methods and one SAM
-   interface (`Adjuster`, `(Money) -> void`) under `interfaces`.
+   four object types (`Money`, `Items`, `Shop`, `Ledger`), `Currency`, exact overloads, void methods and two SAM
+   interfaces (`Adjuster`, `(Money) -> void`; `Score`, `(Money) -> int`) under `interfaces`.
    [sample.dsl.json](sample-suite/sample.dsl.json) merges that domain with the standard catalog.
 3. **Pin dependencies.** [sdk.lock](sdk.lock) and [suite.lock](suite.lock) hash every vendored file;
    `python3 scripts/sync.py check` rejects drift. [pom.xml](pom.xml) compiles `vendor/lmcode-java/src/main/java`
@@ -48,7 +48,11 @@ any compiler version, since annotations and interface bindings are compile-time 
    verifies the exact schema SHA-256 and binds every import before execution.
 9. **Handle errors at the right boundary.** [Main.java](src/main/java/io/lmctl/sample/Main.java) emits one
    UTF-8 LF JSON result line after any `print` trace lines: success `0`, CLI usage `2`, load/run error `3`,
-   application failure `4`. A negative final ledger balance is an application rule checked after VM execution.
+   application failure `4`. After the body runs, the host calls the program's rule entries
+   (`Program.entries()` / `Program.call(...)`): each `@item` entry once per shop item in order, each
+   `@total` entry once with the shop total, others never; non-void results print `entry NAME = VALUE`
+   lines and the result object reports the call count as `"entries_called"`. A negative final ledger
+   balance is an application rule checked after VM execution.
 10. **Run the shared integration test.** [test.sh](test.sh) builds the executable JAR and wrapper script
     ([build.sh](build.sh)), audits signatures, runs [run-suite.sh](sample-suite/run-suite.sh), checks
     compiler bytecode reproducibility ([check-bytecode.py](scripts/check-bytecode.py)), and runs the negative
@@ -90,7 +94,8 @@ any compiler version, since annotations and interface bindings are compile-time 
 | Raw/dedented inner heredocs and all four outer splice types | 046–047 |
 | Native boundary conversions, 1 MiB strings, handles, 255 args, deep inline | 049–066 |
 | `@NAME` rule method annotation and `implements` SAM interface | 067 |
-| Bad magic/schema/import binding rejection | 090–092 |
+| Rule entries called by the host after the body (`@item`/`@total`, `entries_called`) | 068–069 |
+| Bad magic/schema/import binding rejection, v5 bytecode refused | 090–093 |
 | JSON navigation/types and typed map/stack/queue/priority queues | 101–108 |
 | Compiler list/map/JSON literals (`%w`, `%i`, `%f`, `%{...}`, `%json{...}`) | 201–205 |
 | Strict Base64/hex byte codecs and independent map `keys()`/`values()` snapshots | 301–305, 311–313 |
@@ -101,18 +106,18 @@ See [sample-suite/README.md](sample-suite/README.md) for links to every program 
 PASS SDK and suite locks
 PASS: all 181 standard signatures are imported by the corpus
 PASS: all 45 host signatures are imported by the corpus
-PASS 2 compiler rejection case(s), exit 2
+PASS 3 compiler rejection case(s), exit 2
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 91/91 sample cases
-PASS compiler reproduces 91/91 pinned bytecode cases
+PASS 94/94 sample cases
+PASS compiler reproduces 94/94 pinned bytecode cases
 ```
 
 ## Running and updating
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 91 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 91 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 94 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 94 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
