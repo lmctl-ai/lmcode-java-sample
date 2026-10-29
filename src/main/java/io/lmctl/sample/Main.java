@@ -23,7 +23,13 @@ import java.util.List;
  * the canonical corpus byte-for-byte.
  */
 public final class Main {
-  private static final String VERSION = "0.1.0";
+  private static final String VERSION = version();
+  private static String version() {
+    try (InputStream in = Main.class.getResourceAsStream("/sample-version.txt")) {
+      if (in == null) throw new IllegalStateException("missing sample-version.txt");
+      return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+    } catch (IOException e) { throw new IllegalStateException(e); }
+  }
   private static final String USAGE =
       "usage: --version | --dsl-schema [--json] | --dsl-signatures | --dsl FILE";
 

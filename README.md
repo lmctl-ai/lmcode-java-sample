@@ -41,7 +41,7 @@ and refuses v5 files at load (093).
    returns `Value.none()`.
 7. **Include standard and testing functions deliberately.** `new Registry()` installs the standard `string`,
    `encoding`, `math`, `collections`/`containers`, `json` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)`
-   opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.py)
+   opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.lms)
    verifies that all 181 standard signatures and all 45 host signatures are imported by the corpus.
 8. **Compile, never interpret source in the host.** [Program wrappers](sample-suite/programs) use
    `_lmcode_` and `savedsl`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
@@ -55,8 +55,8 @@ and refuses v5 files at load (093).
    balance is an application rule checked after VM execution.
 10. **Run the shared integration test.** [test.sh](test.sh) builds the executable JAR and wrapper script
     ([build.sh](build.sh)), audits signatures, runs [run-suite.sh](sample-suite/run-suite.sh), checks
-    compiler bytecode reproducibility ([check-bytecode.py](scripts/check-bytecode.py)), and runs the negative
-    harness controls ([test_runner.py](sample-suite/test_runner.py)). When GraalVM `native-image` is available,
+    compiler bytecode reproducibility ([check-recompile.lms](sample-suite/check-recompile.lms)), and runs the negative
+    harness controls ([test-runner.lms](sample-suite/test-runner.lms)). When GraalVM `native-image` is available,
     `RUN_NATIVE=1 ./test.sh` also builds and verifies a standalone native binary via
     [build-native.sh](scripts/build-native.sh).
 
@@ -128,4 +128,35 @@ To resync after reviewed upstream commits:
 ./scripts/sync-sdk.sh ../lmcode-java
 ./scripts/sync-suite.sh ../lmcode-cpp
 ./test.sh
+```
+
+## lmscript tests and automatic native releases
+
+```sh
+npm install -g @lmctl-ai/lmctl
+lmctl test.lms
+# Equivalent: lmscript test.lms
+# With GraalVM 21 and native compiler tools on PATH:
+RUN_NATIVE=1 lmscript --no-preflight test.lms
+```
+
+Both executables run `.lms` files; `lmctl` also accepts URLs ending in `.lms`.
+These tests require the checkout and run from its root. Python is used only
+for lock validation/synchronization; test orchestration uses the canonical
+lmscript drivers. Node supplies the byte-preserving process adapter.
+
+[examples/rule-entries.lms](examples/rule-entries.lms) demonstrates `@item`
+and `@total` functions implementing `Adjuster(Money) -> void`, plus an
+undispatched `@never` entry. Tests compile it and compare the exact trace.
+The canonical program 069 demonstrates an interface returning a value.
+
+Every push to `main` builds with GraalVM Community 21 on Linux x64/arm64,
+macOS x64/arm64 and Windows x64. Each job tests the JVM host and all 94
+cases against the native executable. All five must pass before an automatic
+`v0.4.<workflow run number>` release is published with checksums and notices.
+Pull requests run the same checks without publishing. Native executables
+require no JVM; Linux targets glibc and Windows requires the MSVC runtime.
+
+```sh
+lmscript install github:lmctl-ai/lmcode-java-sample@latest
 ```

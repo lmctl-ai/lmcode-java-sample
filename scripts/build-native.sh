@@ -1,25 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
-root="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$root"
-if ! command -v native-image >/dev/null 2>&1; then
-  echo "native-image is required" >&2
-  exit 2
-fi
-mvn -q -DskipTests package
-mkdir -p "$root/build"
-out="$root/build/lmcode-java-sample-native"
-flags=(
-  -H:+UnlockExperimentalVMOptions
-  -J-Xmx4g
-  -H:NumberOfThreads=2
-  --no-fallback
-  -march=compatibility
-  -H:+ReportExceptionStackTraces
-  -H:IncludeResources=sample.dsl.json
-  -cp "$root/target/classes"
-)
+cd "$(dirname "$0")/.."
+mkdir -p build
+case "$(uname -s)" in
+  MSYS*|MINGW*|CYGWIN*) powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-native.ps1; exit $?;;
+esac
+flags=(-H:+UnlockExperimentalVMOptions -J-Xmx4g -H:NumberOfThreads=2 --no-fallback -march=compatibility -H:+ReportExceptionStackTraces '-H:IncludeResources=sample\.dsl\.json|sample-version\.txt')
 if [[ "$(uname -s)" == Linux* ]]; then
-  flags+=("-H:+StaticExecutableWithDynamicLibC" "-H:NativeLinkerOption=-static-libstdc++" "-H:NativeLinkerOption=-static-libgcc")
+  flags+=('-H:+StaticExecutableWithDynamicLibC' '-H:NativeLinkerOption=-static-libstdc++' '-H:NativeLinkerOption=-static-libgcc')
 fi
-native-image "${flags[@]}" io.lmctl.sample.Main "$out"
+native-image "${flags[@]}" -cp "target/lmcode-java-sample.jar" io.lmctl.sample.Main "build/lmcode-java-sample"
