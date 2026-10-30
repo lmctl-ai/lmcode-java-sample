@@ -42,7 +42,7 @@ and refuses v5 files at load (093).
 7. **Include standard and testing functions deliberately.** `new Registry()` installs the standard `string`,
    `encoding`, `math`, `collections`/`containers`, `json` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)`
    opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.lms)
-   verifies that all 181 standard signatures and all 45 host signatures are imported by the corpus.
+   verifies that all 182 standard signatures and all 45 host signatures are imported by the corpus.
 8. **Compile, never interpret source in the host.** [Program wrappers](sample-suite/programs) use
    `_lmcode_` and `savedsl`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
    verifies the exact schema SHA-256 and binds every import before execution.
@@ -104,20 +104,20 @@ See [sample-suite/README.md](sample-suite/README.md) for links to every program 
 
 ```text
 PASS SDK and suite locks
-PASS: all 181 standard signatures are imported by the corpus
+PASS: all 182 standard signatures are imported by the corpus
 PASS: all 45 host signatures are imported by the corpus
 PASS 3 compiler rejection case(s), exit 2
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 94/94 sample cases
-PASS compiler reproduces 94/94 pinned bytecode cases
+PASS 108/108 sample cases
+PASS compiler reproduces 108/108 pinned bytecode cases
 ```
 
 ## Running and updating
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 94 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 94 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 108 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 108 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
@@ -151,7 +151,7 @@ undispatched `@never` entry. Tests compile it and compare the exact trace.
 The canonical program 069 demonstrates an interface returning a value.
 
 Every push to `main` builds with GraalVM Community 21 on Linux x64/arm64,
-macOS x64/arm64 and Windows x64. Each job tests the JVM host and all 94
+macOS x64/arm64 and Windows x64. Each job tests the JVM host and all 108
 cases against the native executable. All five must pass before an automatic
 `v0.4.<workflow run number>` release is published with checksums and notices.
 Pull requests run the same checks without publishing. Native executables
@@ -160,3 +160,9 @@ require no JVM; Linux targets glibc and Windows requires the MSVC runtime.
 ```sh
 lmscript install github:lmctl-ai/lmcode-java-sample@latest
 ```
+
+## Text templates
+
+[examples/text-template.lms](examples/text-template.lms) renders ordinary text from a nested context with indexed lists, loops and boolean conditions. The standard `template_render(string, Json) -> string` function performs one pass; inserted values stay literal. Compile it with `lmscript --no-preflight examples/text-template.lms build/text-template.dslb`, then run the sample host with `--dsl build/text-template.dslb`.
+
+The lmscript-driven suite runs 108 cases, including template success/error cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).
