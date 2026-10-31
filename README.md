@@ -23,7 +23,7 @@ and refuses v5 files at load (093).
 2. **Declare the API.** [host.schema.json](sample-suite/host.schema.json) declares contexts (`shop`, `ledger`),
    four object types (`Money`, `Items`, `Shop`, `Ledger`), `Currency`, exact overloads, void methods and two SAM
    interfaces (`Adjuster`, `(Money) -> void`; `Score`, `(Money) -> int`) under `interfaces`.
-   [sample.dsl.json](sample-suite/sample.dsl.json) merges that domain with the standard catalog.
+   [`sample.dsl.json`](sample-suite/sample.dsl.json) merges that domain with the standard catalog.
 3. **Pin dependencies.** [sdk.lock](sdk.lock) and [suite.lock](suite.lock) hash every vendored file;
    `python3 scripts/sync.py check` rejects drift. [pom.xml](pom.xml) compiles `vendor/lmcode-java/src/main/java`
    alongside `src/main/java` and embeds `sample-suite/sample.dsl.json` as a classpath resource.
