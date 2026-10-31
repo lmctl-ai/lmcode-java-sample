@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+root="$(cd "$(dirname "$0")/.." && pwd)"
+exec java -jar "$root/target/lmcode-java-sample.jar" "$@"

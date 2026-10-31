@@ -6,6 +6,8 @@ import io.lmctl.lmcode.Program;
 import io.lmctl.lmcode.Registry;
 import io.lmctl.lmcode.Reports;
 import io.lmctl.lmcode.ResultSink;
+import io.lmctl.lmcode.InvocationResults;
+import io.lmctl.lmcode.ResultContract;
 import io.lmctl.lmcode.Value;
 import io.lmctl.lmcode.VmException;
 import java.io.ByteArrayOutputStream;
@@ -16,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 /**
  * Native host CLI protocol (`--version`, `--lmcode-schema`, `--lmcode-signatures`, `--lmcode FILE`).
@@ -79,83 +83,51 @@ public final class Main {
         }
         return 0;
       }
-      if (args.length != 2 || !"--lmcode".equals(args[0])) {
-        return usage();
+      List<String> files = new ArrayList<>();
+      List<Integer> priorities = new ArrayList<>();
+      for (int i = 0; i < args.length; i += 2) {
+        if (i + 1 >= args.length || !(args[i].equals("--lmcode") || args[i].equals("--first") || args[i].equals("--last"))) return usage();
+        files.add(args[i + 1]); priorities.add(args[i].equals("--first") ? 0 : args[i].equals("--last") ? 2 : 1);
       }
-
-      byte[] bytecode;
-      try {
-        bytecode = Files.readAllBytes(Path.of(args[1]));
-      } catch (IOException | InvalidPathException e) {
-        return Reports.appFailure("cannot read sample input");
-      }
-
-      Program program;
-      try {
-        program = Program.load(bytecode, readSchema(), host.registry);
-      } catch (VmException error) {
-        // Loader messages are normalized so all eight language ports emit identical load errors.
-        String message =
-            switch (error.code) {
-              case "LOAD_SCHEMA_MISMATCH" -> "sample schema mismatch";
-              case "LOAD_UNBOUND" -> "sample import mismatch";
-              default -> "invalid sample bytecode";
-            };
-        return Reports.error("load", new VmException(error.code, message));
-      }
-
-      // One invocation owns the result across the body and selected rule entries.
-      ResultSink sink = new ResultSink();
-      host.registry.setResultSink(sink);
-      Context context = host.context();
-      try {
-        program.run(context, host.registry);
-      } catch (VmException error) {
-        return Reports.error("run", error);
-      }
-
-      // Rule entries (DSLB v6): after the body, @item entries run once per shop
-      // item in order, @total once with the shop total, other annotations never.
-      int entriesCalled = 0;
-      List<Program.Entry> programEntries = program.entries();
-      try {
-        for (int i = 0; i < programEntries.size(); i++) {
-          String annotation = programEntries.get(i).annotation();
-          if ("item".equals(annotation)) {
-            for (Shop.Money item : host.itemHandles()) {
-              callEntry(program, i, context, host.registry, Value.object("Money", item));
-              entriesCalled++;
-            }
-          } else if ("total".equals(annotation)) {
-            callEntry(program, i, context, host.registry, host.totalHandle());
-            entriesCalled++;
+      if (files.isEmpty()) return usage();
+      InvocationResults results = InvocationResults.fromCommand(files);
+      List<Integer> order = new ArrayList<>(); for (int i = 0; i < files.size(); i++) order.add(i);
+      order.sort(Comparator.comparingInt(priorities::get));
+      byte[] schema = readSchema(); ResultContract contract = ResultContract.fromSchema(schema);
+      Context context = host.context(); int entriesCalled = 0; boolean failed = false;
+      for (int position : order) {
+        InvocationResults.Registration part = results.registrations().get(position);
+        String phase = "load";
+        try {
+          Program program;
+          try { program = Program.load(Files.readAllBytes(Path.of(part.file())), schema, host.registry); }
+          catch (VmException error) {
+            String message = switch (error.code) { case "LOAD_SCHEMA_MISMATCH" -> "sample schema mismatch"; case "LOAD_UNBOUND" -> "sample import mismatch"; default -> "invalid sample bytecode"; };
+            throw new VmException(error.code, message);
           }
-        }
-      } catch (VmException error) {
-        return Reports.error("run", error);
+          results.select(part.index(), host.registry, contract); phase = "run"; program.run(context, host.registry);
+          for (int i = 0; i < program.entries().size(); i++) {
+            String annotation = program.entries().get(i).annotation();
+            if ("item".equals(annotation)) for (Shop.Money item : host.itemHandles()) { callEntry(program, i, context, host.registry, Value.object("Money", item)); entriesCalled++; }
+            else if ("total".equals(annotation)) { callEntry(program, i, context, host.registry, host.totalHandle()); entriesCalled++; }
+          }
+          results.complete(part.index());
+        } catch (VmException error) { results.fail(part.index(), phase, error); failed = true; break; }
+        catch (Exception error) { results.fail(part.index(), "app", new VmException("APP_FAIL", "cannot read sample input")); failed = true; break; }
       }
-
-      // Application-level domain validation runs after VM execution succeeds (exit code 4).
-      if (host.ledger.balance < 0) {
-        return Reports.appFailure("ledger: negative balance");
+      if (!failed && host.ledger.balance < 0) { results.fail(null, "app", new VmException("APP_FAIL", "ledger: negative balance")); failed = true; }
+      if (!failed) {
+        ByteArrayOutputStream summary = new ByteArrayOutputStream(64);
+        summary.writeBytes(("{\"host_summary\":{\"balance\": " + host.ledger.balance + ", \"entries\": " + host.ledger.entries + ", \"note\": ").getBytes(StandardCharsets.US_ASCII));
+        summary.writeBytes(Reports.escapeBytes(host.ledger.note));
+        summary.writeBytes((", \"entries_called\": " + entriesCalled + "}}\n").getBytes(StandardCharsets.US_ASCII));
+        System.out.write(summary.toByteArray());
       }
-      ByteArrayOutputStream result = new ByteArrayOutputStream(64);
-      result.writeBytes(
-          ("{\"balance\": "
-                  + host.ledger.balance
-                  + ", \"entries\": "
-                  + host.ledger.entries
-                  + ", \"note\": ")
-              .getBytes(StandardCharsets.US_ASCII));
-      result.writeBytes(Reports.escapeBytes(host.ledger.note));
-      result.writeBytes(
-          (", \"entries_called\": " + entriesCalled + "}").getBytes(StandardCharsets.US_ASCII));
-      int code = Reports.ok(result.toByteArray());
-      if (code != 0) return code;
-      Reports.writeResultFrame(System.out, sink);
-      return 0;
+      return results.writeFrame(System.out);
+    } catch (VmException e) {
+      return Reports.failureFrame("cli", e);
     } catch (Exception e) {
-      return Reports.appFailure("cannot read sample input");
+      return Reports.failureFrame("app", new VmException("APP_FAIL", "cannot read sample input"));
     }
   }
 
