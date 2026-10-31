@@ -14,9 +14,13 @@ with tempfile.TemporaryDirectory(prefix='lmcode-java-mutants-') as tmp:
     bash = 'bash'
     if os.name == 'nt':
         bash = str(Path(os.environ.get('ProgramFiles', r'C:\Program Files')) / 'Git' / 'bin' / 'bash.exe')
+        host = work / 'build/lmcode-java-sample.exe'
     def build():
         p = subprocess.run([bash, 'scripts/build-jvm.sh'], cwd=work, capture_output=True)
         if p.returncode: raise AssertionError(('mutant compile failed', p.stdout, p.stderr))
+        if os.name == 'nt':
+            p = subprocess.run([bash, 'scripts/build-native.sh'], cwd=work, capture_output=True)
+            if p.returncode: raise AssertionError(('mutant native compile failed', p.stdout, p.stderr))
     def check():
         p = subprocess.run([sys.executable, str(work/'scripts/check-invocations.py'), str(host)], cwd=work, capture_output=True)
         if p.returncode == 0: raise AssertionError(('mutant survived', p.stdout, p.stderr))
