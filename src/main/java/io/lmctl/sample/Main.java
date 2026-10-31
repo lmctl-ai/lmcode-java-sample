@@ -5,6 +5,7 @@ import io.lmctl.lmcode.Formatting;
 import io.lmctl.lmcode.Program;
 import io.lmctl.lmcode.Registry;
 import io.lmctl.lmcode.Reports;
+import io.lmctl.lmcode.ResultSink;
 import io.lmctl.lmcode.Value;
 import io.lmctl.lmcode.VmException;
 import java.io.ByteArrayOutputStream;
@@ -17,7 +18,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Native host CLI protocol (`--version`, `--dsl-schema`, `--dsl-signatures`, `--dsl FILE`).
+ * Native host CLI protocol (`--version`, `--lmcode-schema`, `--lmcode-signatures`, `--lmcode FILE`).
  *
  * <p>All output uses explicit UTF-8 and LF (`\n`) bytes so Linux, macOS, and Windows match
  * the canonical corpus byte-for-byte.
@@ -31,7 +32,7 @@ public final class Main {
     } catch (IOException e) { throw new IllegalStateException(e); }
   }
   private static final String USAGE =
-      "usage: --version | --dsl-schema [--json] | --dsl-signatures | --dsl FILE";
+      "usage: --version | --lmcode-schema [--json] | --lmcode-signatures | --lmcode FILE";
 
   private Main() {}
 
@@ -66,19 +67,19 @@ public final class Main {
         return 0;
       }
       if ((args.length == 1 || (args.length == 2 && "--json".equals(args[1])))
-          && "--dsl-schema".equals(args[0])) {
+          && "--lmcode-schema".equals(args[0])) {
         byte[] schema = readSchema();
         System.out.write(schema, 0, schema.length);
         System.out.flush();
         return 0;
       }
-      if (args.length == 1 && "--dsl-signatures".equals(args[0])) {
+      if (args.length == 1 && "--lmcode-signatures".equals(args[0])) {
         for (String signature : host.registry.signatures()) {
           writeLine(signature);
         }
         return 0;
       }
-      if (args.length != 2 || !"--dsl".equals(args[0])) {
+      if (args.length != 2 || !"--lmcode".equals(args[0])) {
         return usage();
       }
 
@@ -103,6 +104,9 @@ public final class Main {
         return Reports.error("load", new VmException(error.code, message));
       }
 
+      // One invocation owns the result across the body and selected rule entries.
+      ResultSink sink = new ResultSink();
+      host.registry.setResultSink(sink);
       Context context = host.context();
       try {
         program.run(context, host.registry);
@@ -146,7 +150,10 @@ public final class Main {
       result.writeBytes(Reports.escapeBytes(host.ledger.note));
       result.writeBytes(
           (", \"entries_called\": " + entriesCalled + "}").getBytes(StandardCharsets.US_ASCII));
-      return Reports.ok(result.toByteArray());
+      int code = Reports.ok(result.toByteArray());
+      if (code != 0) return code;
+      Reports.writeResultFrame(System.out, sink);
+      return 0;
     } catch (Exception e) {
       return Reports.appFailure("cannot read sample input");
     }

@@ -44,7 +44,7 @@ and refuses v5 files at load (093).
    opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.lms)
    verifies that all 182 standard signatures and all 45 host signatures are imported by the corpus.
 8. **Compile, never interpret source in the host.** [Program wrappers](sample-suite/programs) use
-   `_lmcode_` and `savedsl`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
+   `_lmcode_` with `out=`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
    verifies the exact schema SHA-256 and binds every import before execution.
 9. **Handle errors at the right boundary.** [Main.java](src/main/java/io/lmctl/sample/Main.java) emits one
    UTF-8 LF JSON result line after any `print` trace lines: success `0`, CLI usage `2`, load/run error `3`,
@@ -163,10 +163,14 @@ lmscript install github:lmctl-ai/lmcode-java-sample@latest
 
 ## Text templates
 
-[examples/text-template.lms](examples/text-template.lms) renders ordinary text from a nested context with indexed lists, loops and boolean conditions. The standard `template_render(string, Json) -> string` function performs one pass; inserted values stay literal. Compile it with `lmscript --no-preflight examples/text-template.lms build/text-template.dslb`, then run the sample host with `--dsl build/text-template.dslb`.
+[examples/text-template.lms](examples/text-template.lms) renders ordinary text from a nested context with indexed lists, loops and boolean conditions. The standard `template_render(string, Json) -> string` function performs one pass; inserted values stay literal. Compile it with `lmscript --no-preflight examples/text-template.lms build/text-template.dslb`, then run the sample host with `--lmcode build/text-template.dslb`.
 
 The lmscript-driven suite runs 108 cases, including template success/error cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).
 
 ## Historical literal names
 
-The documentation calls the language lmcode. `--dsl`, `--dsl-schema` and `--dsl-signatures` are current host flag literals; `DSLB` is the bytecode magic and `DSLB v6` is the current format name; `.dslb` is the current bytecode filename extension. Other code-formatted API names, paths, manifest names and diagnostic text retain their current literal spellings.
+The documentation calls the language lmcode. `--lmcode`, `--lmcode-schema` and `--lmcode-signatures` are current host flag literals; `DSLB` is the bytecode magic and `DSLB v6` is the current format name; `.dslb` is the current bytecode filename extension. Other code-formatted API names, paths, manifest names and diagnostic text retain their current literal spellings.
+
+## Invocation result
+
+The host retains one SDK `ResultSink` across the body and selected rule entries, then writes a terminal return frame only after successful domain validation. Unset results produce `null`. The canonical suite has 123 cases. Use an `LMSCRIPT_BIN` built from mono main with the renamed host flags and `out=` support; older published compilers do not implement this contract.
