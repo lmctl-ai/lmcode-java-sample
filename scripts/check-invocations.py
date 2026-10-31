@@ -3,7 +3,10 @@
 import json, os, subprocess, sys, tempfile
 from pathlib import Path
 root=Path(__file__).resolve().parent.parent
-host=str(Path(sys.argv[1]).resolve())
+host_path=Path(sys.argv[1])
+if os.name=='nt' and not host_path.is_file() and host_path.suffix.lower()!='.exe':
+    host_path=host_path.with_suffix('.exe')
+host=str(host_path.resolve())
 source=(root/'sample-suite/invocations.lms').read_text().replace('"__HOST__"',json.dumps(host))
 with tempfile.TemporaryDirectory(prefix='jvm-multi-') as tmp:
  program=Path(tmp)/'invocations.lms'; program.write_text(source)
