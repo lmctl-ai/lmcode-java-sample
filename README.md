@@ -10,7 +10,7 @@ Python 3 and a v6-entries-capable `lmscript` (Node >= 24.15).
 LMSCRIPT_BIN=/path/to/v6-entries-capable/lmscript ./test.sh
 ```
 
-The corpus is DSLB v6 (R49 rule entries), first published as `@lmctl-ai/lmctl` 0.2.444, which reproduces
+The corpus is lmcode bytecode (DSLB v6) (R49 rule entries), first published as `@lmctl-ai/lmctl` 0.2.444, which reproduces
 every pinned `.dslb` byte-for-byte; 0.2.442/0.2.443 accept the rule syntax but still write v5. Set
 `LMSCRIPT_BIN` to a development lmscript build only when testing unreleased compiler work
 (see [sample-suite/README.md](sample-suite/README.md)). The vendored v6 SDK runs the pinned bytes directly
@@ -166,3 +166,7 @@ lmscript install github:lmctl-ai/lmcode-java-sample@latest
 [examples/text-template.lms](examples/text-template.lms) renders ordinary text from a nested context with indexed lists, loops and boolean conditions. The standard `template_render(string, Json) -> string` function performs one pass; inserted values stay literal. Compile it with `lmscript --no-preflight examples/text-template.lms build/text-template.dslb`, then run the sample host with `--dsl build/text-template.dslb`.
 
 The lmscript-driven suite runs 108 cases, including template success/error cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).
+
+## Historical literal names
+
+The documentation calls the language lmcode. `--dsl`, `--dsl-schema` and `--dsl-signatures` are current host flag literals; `DSLB` is the bytecode magic and `DSLB v6` is the current format name; `.dslb` is the current bytecode filename extension. Other code-formatted API names, paths, manifest names and diagnostic text retain their current literal spellings.
