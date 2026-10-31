@@ -53,7 +53,7 @@ and refuses v5 files at load (093).
    balance is an application rule checked after VM execution.
 10. **Run the shared integration test.** [test.sh](test.sh) builds the executable JAR and wrapper script
     ([build.sh](build.sh)), audits signatures, runs [run-suite.sh](sample-suite/run-suite.sh), checks
-    compiler bytecode reproducibility ([check-recompile.lms](sample-suite/check-recompile.lms)), and runs the negative
+    published compiler source type-checking and fixture controls ([check-recompile.lms](sample-suite/check-recompile.lms)), and runs the negative
     harness controls ([test-runner.lms](sample-suite/test-runner.lms)). When GraalVM `native-image` is available,
     `RUN_NATIVE=1 ./test.sh` also builds and verifies a standalone native binary via
     [build-native.sh](scripts/build-native.sh).
@@ -106,16 +106,16 @@ PASS: all 182 standard signatures are imported by the corpus
 PASS: all 45 host signatures are imported by the corpus
 PASS 3 compiler rejection case(s), exit 2
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 108/108 sample cases
-PASS compiler reproduces 108/108 pinned bytecode cases
+PASS 123/123 sample cases
+PASS compiler type-checks 119 source files; 4 bytecode mutation controls
 ```
 
 ## Running and updating
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 108 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 108 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 123 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 123 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
@@ -163,7 +163,7 @@ lmscript install github:lmctl-ai/lmcode-java-sample@latest
 
 [examples/text-template.lms](examples/text-template.lms) renders ordinary text from a nested context with indexed lists, loops and boolean conditions. It constructs an lmcode program, calls `run_lmcode`, and checks `result.ok`; no bytecode file is exposed to the script author.
 
-The lmscript-driven suite runs 108 cases, including template success/error cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).
+The lmscript-driven suite runs 123 cases, including template success/error cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).
 
 ## Historical literal names
 
