@@ -42,13 +42,14 @@ and refuses v5 files at load (093).
 7. **Include standard and testing functions deliberately.** `new Registry()` installs the standard `string`,
    `encoding`, `math`, `collections`/`containers`, `json` and `file` catalogs; `Stdlib.registerTesting(registry, System.out)`
    opts into `print(string)` and `assert_close(float, float, float)`. The [coverage audit](sample-suite/audit.lms)
-   verifies that all 182 standard signatures and all 45 host signatures are imported by the corpus.
+   verifies that all 206 standard signatures and all 45 host signatures are imported by the corpus.
 8. **Compile, never interpret source in the host.** [Program wrappers](sample-suite/programs) use
    `_lmcode_` and `savedsl`; compiled `.dslb` files are committed. `Program.load(bytecode, schema, registry)`
    verifies the exact schema SHA-256 and binds every import before execution.
-9. **Handle errors at the right boundary.** [Main.java](src/main/java/io/lmctl/sample/Main.java) emits one
-   UTF-8 LF JSON result line after any `print` trace lines: success `0`, CLI usage `2`, load/run error `3`,
-   application failure `4`. After the body runs, the host calls the program's rule entries
+9. **Handle errors and return frames at the right boundary.** [Main.java](src/main/java/io/lmctl/sample/Main.java) emits
+   the UTF-8 LF JSON diagnostic after any `print` trace lines, then a terminal return frame after the body,
+   entries and ledger validation succeed. Success is `0`, CLI usage `2`, load/run error `3`, application failure `4`.
+   After the body runs, the host calls the program's rule entries
    (`Program.entries()` / `Program.call(...)`): each `@item` entry once per shop item in order, each
    `@total` entry once with the shop total, others never; non-void results print `entry NAME = VALUE`
    lines and the result object reports the call count as `"entries_called"`. A negative final ledger
@@ -95,6 +96,7 @@ and refuses v5 files at load (093).
 | Native boundary conversions, 1 MiB strings, handles, 255 args, deep inline | 049–066 |
 | `@NAME` rule method annotation and `implements` SAM interface | 067 |
 | Rule entries called by the host after the body (`@item`/`@total`, `entries_called`) | 068–069 |
+| Invocation return sink, retained entry writes, JSON frame and no-frame failures | 360–368 |
 | Bad magic/schema/import binding rejection, v5 bytecode refused | 090–093 |
 | JSON navigation/types and typed map/stack/queue/priority queues | 101–108 |
 | Compiler list/map/JSON literals (`%w`, `%i`, `%f`, `%{...}`, `%json{...}`) | 201–205 |
@@ -104,20 +106,20 @@ See [sample-suite/README.md](sample-suite/README.md) for links to every program 
 
 ```text
 PASS SDK and suite locks
-PASS: all 182 standard signatures are imported by the corpus
+PASS: all 206 standard signatures are imported by the corpus
 PASS: all 45 host signatures are imported by the corpus
 PASS 3 compiler rejection case(s), exit 2
 PASS host CLI protocol (0/2/3/4; schema/signatures/discovery)
-PASS 108/108 sample cases
-PASS compiler reproduces 108/108 pinned bytecode cases
+PASS 123/123 sample cases
+PASS compiler reproduces 123/123 pinned bytecode cases
 ```
 
 ## Running and updating
 
 ```sh
 ./build.sh                                                          # Build target/lmcode-java-sample.jar and build/lmcode-java-sample
-./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 108 cases directly
-./test.sh                                                           # Full verification (locks, build, audit, 108 cases, bytecode, controls)
+./sample-suite/run-suite.sh java -jar target/lmcode-java-sample.jar # Run protocol + 123 cases directly
+./test.sh                                                           # Full verification (locks, build, audit, 123 cases, bytecode, controls)
 RUN_NATIVE=1 ./test.sh                                              # Also compile and verify GraalVM native-image binary
 ```
 
@@ -151,7 +153,7 @@ undispatched `@never` entry. Tests compile it and compare the exact trace.
 The canonical program 069 demonstrates an interface returning a value.
 
 Every push to `main` builds with GraalVM Community 21 on Linux x64/arm64,
-macOS x64/arm64 and Windows x64. Each job tests the JVM host and all 108
+macOS x64/arm64 and Windows x64. Each job tests the JVM host and all 123
 cases against the native executable. All five must pass before an automatic
 `v0.4.<workflow run number>` release is published with checksums and notices.
 Pull requests run the same checks without publishing. Native executables
@@ -161,8 +163,26 @@ require no JVM; Linux targets glibc and Windows requires the MSVC runtime.
 lmscript install github:lmctl-ai/lmcode-java-sample@latest
 ```
 
+## Invocation return frames
+
+For one `--dsl` invocation, `Main` binds one `ResultSink` to the registry before
+the body and retains it across selected entries. The JSON diagnostic and entry
+traces keep their existing order. Only after dispatch and ledger validation
+succeed does the host append the terminal frame. Failed load/run/entry or
+application paths emit no frame; an untouched sink emits JSON `null`. See
+[`durable-memory/return-frames.md`](durable-memory/return-frames.md) and canonical
+cases 360–368.
+
+Successful stdout ends with:
+
+```text
+LMCODE_RETURN_BEGIN
+null
+LMCODE_RETURN_END
+```
+
 ## Text templates
 
 [examples/text-template.lms](examples/text-template.lms) renders ordinary text from a nested context with indexed lists, loops and boolean conditions. The standard `template_render(string, Json) -> string` function performs one pass; inserted values stay literal. Compile it with `lmscript --no-preflight examples/text-template.lms build/text-template.dslb`, then run the sample host with `--dsl build/text-template.dslb`.
 
-The lmscript-driven suite runs 108 cases, including template success/error cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).
+The lmscript-driven suite runs 123 cases, including return-frame success/failure and template cases. See the [portable template contract](https://github.com/lmctl-ai/lmcode-cpp/blob/main/std/template.md).

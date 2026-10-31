@@ -5,6 +5,7 @@ import io.lmctl.lmcode.Formatting;
 import io.lmctl.lmcode.Program;
 import io.lmctl.lmcode.Registry;
 import io.lmctl.lmcode.Reports;
+import io.lmctl.lmcode.ResultSink;
 import io.lmctl.lmcode.Value;
 import io.lmctl.lmcode.VmException;
 import java.io.ByteArrayOutputStream;
@@ -104,6 +105,9 @@ public final class Main {
       }
 
       Context context = host.context();
+      // One sink belongs to this logical invocation; keep it through every entry call.
+      ResultSink sink = new ResultSink();
+      host.registry.setResultSink(sink);
       try {
         program.run(context, host.registry);
       } catch (VmException error) {
@@ -146,7 +150,9 @@ public final class Main {
       result.writeBytes(Reports.escapeBytes(host.ledger.note));
       result.writeBytes(
           (", \"entries_called\": " + entriesCalled + "}").getBytes(StandardCharsets.US_ASCII));
-      return Reports.ok(result.toByteArray());
+      int status = Reports.ok(result.toByteArray());
+      Reports.writeResultFrame(System.out, sink);
+      return status;
     } catch (Exception e) {
       return Reports.appFailure("cannot read sample input");
     }
