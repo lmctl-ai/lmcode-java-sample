@@ -65,7 +65,6 @@ public final class Main {
 
   public static int run(String[] args) {
     try {
-      Shop host = new Shop();
       if (args.length == 1 && "--version".equals(args[0])) {
         writeLine("lmcode-java-sample " + VERSION);
         return 0;
@@ -78,7 +77,7 @@ public final class Main {
         return 0;
       }
       if (args.length == 1 && "--lmcode-signatures".equals(args[0])) {
-        for (String signature : host.registry.signatures()) {
+        for (String signature : new Shop(false).registry.signatures()) {
           writeLine(signature);
         }
         return 0;
@@ -91,10 +90,12 @@ public final class Main {
       }
       if (files.isEmpty()) return usage();
       InvocationResults results = InvocationResults.fromCommand(files);
+      // Read and bind the invocation mode before host setup can acquire resources.
+      Shop host = new Shop(results.dry());
       List<Integer> order = new ArrayList<>(); for (int i = 0; i < files.size(); i++) order.add(i);
       order.sort(Comparator.comparingInt(priorities::get));
       byte[] schema = readSchema(); ResultContract contract = ResultContract.fromSchema(schema);
-      Context context = host.context(); int entriesCalled = 0; boolean failed = false;
+      Context context = host.context(); context.setDry(results.dry()); int entriesCalled = 0; boolean failed = false;
       for (int position : order) {
         InvocationResults.Registration part = results.registrations().get(position);
         String phase = "load";
@@ -120,7 +121,8 @@ public final class Main {
         ByteArrayOutputStream summary = new ByteArrayOutputStream(64);
         summary.writeBytes(("{\"host_summary\":{\"balance\": " + host.ledger.balance + ", \"entries\": " + host.ledger.entries + ", \"note\": ").getBytes(StandardCharsets.US_ASCII));
         summary.writeBytes(Reports.escapeBytes(host.ledger.note));
-        summary.writeBytes((", \"entries_called\": " + entriesCalled + "}}\n").getBytes(StandardCharsets.US_ASCII));
+        String preview = results.dry() ? ", \"dry_preview_calls\": " + host.dryPreviewCalls : "";
+        summary.writeBytes((", \"entries_called\": " + entriesCalled + preview + "}}\n").getBytes(StandardCharsets.US_ASCII));
         System.out.write(summary.toByteArray());
       }
       return results.writeFrame(System.out);

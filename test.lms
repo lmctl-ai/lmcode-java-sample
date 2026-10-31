@@ -10,7 +10,7 @@ python = "python3";
 if (env("RUNNER_OS") == "Windows") { python = "python"; }
 step([python, "-B", "scripts/sync.py", "check"]);
 step(["bash", "scripts/build-jvm.sh"]);
-step([python, "scripts/test-invocation-mutations.py"]);
+step([python, "scripts/test-dry-invocations.py", path_join(Directory, "bin/lmcode-java-sample")]);
 jvm = ["java", "-jar", path_join(Directory, "target/lmcode-java-sample.jar")];
 step(concat(compiler_command(), ["--no-preflight", "sample-suite/audit.lms", "--std", "vendor/lmcode-java/std/lmcode-std.schema.json"]));
 step(concat(compiler_command(), ["--no-preflight", "sample-suite/run-suite.lms"], jvm));
@@ -27,6 +27,7 @@ if (env("RUN_NATIVE") == "1") {
   assert(env("RUNNER_OS") != "Windows", "RUN_NATIVE=1 is required for Windows host discovery");
 }
 step([python, "scripts/check-invocations.py", example_host]);
+step([python, "scripts/test-invocation-mutations.py"]);
 rule_example = invoke(suite_root(), concat(compiler_command(), ["--no-preflight", "examples/rule-entries.lms", example_host]), [], {}, 30000);
 assert(rule_example.code == 0 && rule_example.stdout == "body done\nitem rule 125\nitem rule 250\nitem rule 375\naudit 125\naudit 250\naudit 375\ntotal rule 750\n{\"host_summary\":{\"balance\": 0, \"entries\": 0, \"note\": \"\", \"entries_called\": 7}}\n" && rule_example.stderr_hex == "", "annotated interface example differs");
 println("PASS annotated interface example");

@@ -6,6 +6,11 @@ import io.lmctl.lmcode.Stdlib;
 import io.lmctl.lmcode.Value;
 import io.lmctl.lmcode.VmException;
 import io.lmctl.lmcode.VmString;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HexFormat;
@@ -47,12 +52,23 @@ public final class Shop {
     public VmString note = new VmString(new byte[0]);
   }
 
-  public final Registry registry = new Registry(); // Installs string/math/collections/file std by default.
-  public final ShopState shop = new ShopState();
-  public final Ledger ledger = new Ledger();
-  private final List<Money> arena = new ArrayList<>();
+  public final boolean dryMode;
+  public int dryPreviewCalls;
+  public final Registry registry;
+  public final ShopState shop;
+  public final Ledger ledger;
+  private final List<Money> arena;
 
-  public Shop() {
+  public Shop() { this(false); }
+
+  /** Setup is confined to in-memory demo state; the invocation mode is fixed before setup begins. */
+  public Shop(boolean dryMode) {
+    this.dryMode = dryMode;
+    if (!dryMode) writeSentinel("setup");
+    registry = new Registry(); // Installs string/math/collections/file std by default.
+    shop = new ShopState();
+    ledger = new Ledger();
+    arena = new ArrayList<>();
     // Schema context names must match host.schema.json; context() binds live instances per run.
     registry.context("shop", "Shop").context("ledger", "Ledger");
     registerConversions(registry);
@@ -63,8 +79,10 @@ public final class Shop {
     }
 
     // Distinct parameter lists register distinct overloads. int means cents; float means units.
-    registry.function("money", List.of("int"), "Money", (ctx, self, a) -> money(a[0].asInt()));
-    registry.function("money", List.of("float"), "Money", (ctx, self, a) -> units(a[0].asFloat()));
+    Registry.Callback moneyInt = (ctx, self, a) -> money(a[0].asInt());
+    Registry.Callback moneyFloat = (ctx, self, a) -> units(a[0].asFloat());
+    registry.function("money", List.of("int"), "Money", moneyInt, Registry.dry(moneyInt));
+    registry.function("money", List.of("float"), "Money", moneyFloat, Registry.dry(moneyFloat));
     registry.function("fee", List.of("int"), "int", (ctx, self, a) -> Value.ofInt(a[0].asInt() + 5L));
     registry.function(
         "sample_tmp",
@@ -177,16 +195,18 @@ public final class Shop {
         "Ledger",
         (ctx, self, a) -> {
           Ledger target = (Ledger) self.asObject();
+          writeSentinel("record");
           target.balance += asMoney(a[0]).cents;
           target.entries += 1L;
           return self;
         });
+    Registry.Callback balance = (ctx, self, a) -> money(((Ledger) self.asObject()).balance);
     registry.method(
-        "Ledger",
-        "balance",
-        List.of(),
-        "Money",
-        (ctx, self, a) -> money(((Ledger) self.asObject()).balance));
+        "Ledger", "balance", List.of(), "Money", balance,
+        Registry.dry((ctx, self, a) -> {
+          dryPreviewCalls++;
+          return money(((Ledger) self.asObject()).balance);
+        }));
     registry.method(
         "Ledger",
         "count",
@@ -216,6 +236,19 @@ public final class Shop {
         (ctx, self, a) -> {
           throw VmException.host(a[0].asString().toString()); // VM attaches DSL line and column.
         });
+  }
+
+  public boolean dryMode() { return dryMode; }
+
+  private static void writeSentinel(String event) {
+    String path = System.getenv("LMCODE_H6_SENTINEL");
+    if (path == null || path.isEmpty()) return;
+    try {
+      Files.writeString(Path.of(path), event + "\n", StandardCharsets.UTF_8,
+          StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    } catch (IOException error) {
+      throw VmException.host("ledger.record sentinel: " + error.getMessage());
+    }
   }
 
   /** Creates a per-run execution context with live shop and ledger handles. */
