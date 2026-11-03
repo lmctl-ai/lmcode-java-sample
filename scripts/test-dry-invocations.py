@@ -8,7 +8,9 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
-host = str(Path(sys.argv[1]).resolve())
+command = sys.argv[1:]
+if not command:
+    raise SystemExit("provide a host argv prefix")
 program = (root / "sample-suite/bytecode/014-ledger-methods.dslb").resolve()
 expected_real = (root / "sample-suite/expected/014-ledger-methods.out").read_bytes()
 with tempfile.TemporaryDirectory(prefix="lmcode-jvm-dry-") as tmp:
@@ -24,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix="lmcode-jvm-dry-") as tmp:
             "parts": [{"index": 0, "file": str(program)}],
         }), encoding="utf-8")
         env = dict(os.environ, LMCODE_INVOCATION_FILE=str(manifest), LMCODE_H6_SENTINEL=str(sentinel))
-        result = subprocess.run([host, "--lmcode", str(program)], capture_output=True, env=env)
+        result = subprocess.run([*command, "--lmcode", str(program)], capture_output=True, env=env)
         if result.returncode != 0 or result.stderr:
             raise AssertionError((dry, result.returncode, result.stdout, result.stderr))
         lines = result.stdout.splitlines()

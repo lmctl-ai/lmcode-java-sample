@@ -179,3 +179,7 @@ The canonical suite has 123 cases. Use an `LMSCRIPT_BIN` built from mono main fo
 The command host constructs `InvocationResults` from the private manifest before it creates the sample `Shop`/`Host` or its VM `Context`. It copies the manifest mode into the context. This sample's setup uses only in-memory ledger and inventory fixtures; no live resources are opened during dry startup. The real `Ledger.record` callback has no dry slot and is skipped; `Ledger.balance` has one preview that reads the current ledger and is called once per reached invocation. Dry summaries include `dry_preview_calls`; real summaries and return frames remain byte-identical.
 
 The offline `scripts/test-dry-invocations.py` gate runs the committed ledger fixture with dry and real manifests. Its test-only sentinel hook records host setup and `Ledger.record` in real mode. It checks that dry leaves the sentinel absent, the balance preview runs once, and real stdout matches the pinned expected bytes. No network or vendor traffic is used.
+
+Windows qualification launches the JAR with an argv prefix for JVM dry checks,
+then uses the real GraalVM native executable for host discovery and public API
+examples. Native builds merge a UTF-8 process manifest to preserve Unicode argv.

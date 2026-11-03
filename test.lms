@@ -10,8 +10,8 @@ python = "python3";
 if (env("RUNNER_OS") == "Windows") { python = "python"; }
 step([python, "-B", "scripts/sync.py", "check"]);
 step(["bash", "scripts/build-jvm.sh"]);
-step([python, "scripts/test-dry-invocations.py", path_join(Directory, "bin/lmcode-java-sample")]);
 jvm = ["java", "-jar", path_join(Directory, "target/lmcode-java-sample.jar")];
+step(concat([python, "scripts/test-dry-invocations.py"], jvm));
 step(concat(compiler_command(), ["sample-suite/audit.lms", "--std", "vendor/lmcode-java/std/lmcode-std.schema.json"]));
 step(concat(compiler_command(), ["sample-suite/run-suite.lms"], jvm));
 step(concat(compiler_command(), ["sample-suite/check-recompile.lms"]));
