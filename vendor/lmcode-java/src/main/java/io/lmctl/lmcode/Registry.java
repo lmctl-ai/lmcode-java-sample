@@ -9,6 +9,8 @@ public final class Registry {
  Binding(String t,String n,List<String> p,String r,Callback cb,DryCallback dry){method=t!=null;type=t;name=n;parameters=List.copyOf(p);returns=r;callback=Objects.requireNonNull(cb);dryCallback=dry;}
  public boolean method(){return method;} public String type(){return type;} public String name(){return name;} public List<String> parameters(){return parameters;} public String returns(){return returns;} public Callback callback(){return callback;} public DryCallback dryCallback(){return dryCallback;}
  public String canonical(){return (method?"method "+type+".":"fn ")+name+"("+String.join(", ",parameters)+") -> "+returns;}}
+ // Builtin membership prevents a host lookalike from bypassing the liveness guard.
+ boolean isResultConversion(Binding b){return !b.method&&(b.name.equals("lmcode_return_set")||b.name.equals("lmcode_return_put"))&&builtins.contains(b.canonical());}
  private ResultSink resultSink;
  public Registry setResultSink(ResultSink sink){resultSink=sink;return this;}
  ResultSink resultSink(){if(resultSink==null)throw VmException.host("lmcode return: no result sink");return resultSink;}

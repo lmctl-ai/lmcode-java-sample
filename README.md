@@ -135,7 +135,7 @@ npm install -g @lmctl-ai/lmctl
 lmctl test.lms
 # Equivalent: lmscript test.lms
 # With GraalVM 21 and native compiler tools on PATH:
-RUN_NATIVE=1 lmscript --no-preflight test.lms
+RUN_NATIVE=1 lmscript test.lms
 ```
 
 Both executables run `.lms` files; `lmctl` also accepts URLs ending in `.lms`.

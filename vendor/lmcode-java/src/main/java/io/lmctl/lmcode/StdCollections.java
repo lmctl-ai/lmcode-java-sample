@@ -2,8 +2,7 @@ package io.lmctl.lmcode;
 import java.util.*;
 import java.io.ByteArrayOutputStream;
 final class StdCollections {
- static final int LIMIT=65536;
- static final class Arena {int count; boolean alive=true;}
+ static final class Arena {long count; boolean alive=true;}
  static final class CollectionRef { final Arena arena; final Object value; CollectionRef(Arena a,Object v){arena=a;value=v;} Object get(){if(!arena.alive)throw VmException.host("collection is no longer live");return value;} }
  static Arena arena(Context c){return (Arena)c.state().computeIfAbsent("lmcode.std.collections",k->new Arena());}
  static void beginRun(Context c){c.state().remove("lmcode.std.collections");} static void endRun(Context c){Object x=c.state().remove("lmcode.std.collections");if(x instanceof Arena a)a.alive=false;}
@@ -30,5 +29,5 @@ final class StdCollections {
  static Object unwrap(Value v){Object x=v.asObject();if(x==null)throw VmException.host(v.objectType()+": null handle");return x instanceof CollectionRef r?r.get():x;}
  static Value borrow(Value self,String t,Object o){Object x=self.asObject();if(x instanceof CollectionRef r){r.get();return Value.object(t,new CollectionRef(r.arena,o));}return Value.object(t,o);}
  static <T> int find(List<T>x,T v,String type){for(int i=0;i<x.size();i++){Object q=x.get(i);boolean same=type.equals("FloatList")?Double.compare((Double)q,(Double)v)==0||((Double)q).doubleValue()==((Double)v).doubleValue():Objects.equals(q,v);if(type.equals("FloatList"))same=((Double)q).doubleValue()==((Double)v).doubleValue();if(same)return i;}return -1;}
- static int idx(long i,int n,String m){if(i<0||i>=n)throw VmException.host(m+": index out of range: "+i);return(int)i;} static Value obj(Context c,String t,Object o){Arena a=arena(c);if(a.count++>=LIMIT)throw VmException.host(t+" object limit exceeded (65536)");c.charge(64);return Value.object(t,new CollectionRef(a,o));}
+ static int idx(long i,int n,String m){if(i<0||i>=n)throw VmException.host(m+": index out of range: "+i);return(int)i;} static Value obj(Context c,String t,Object o){Arena a=arena(c);if(a.count==Long.MAX_VALUE)throw VmException.host(t+" object count exceeds platform long range");a.count++;c.charge(64);return Value.object(t,new CollectionRef(a,o));}
 }

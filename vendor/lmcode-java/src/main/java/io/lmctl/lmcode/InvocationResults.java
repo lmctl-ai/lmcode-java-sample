@@ -26,10 +26,12 @@ public final class InvocationResults {
  public static InvocationResults fromMetadata(byte[] raw,List<String> parsedFiles){
   boolean dryKnown=false,dryMode=false;
   try{
-   Map<String,Object> root=keys(InvocationJson.owned(raw),Set.of("version","mode","dry","parts"));Object version=root.get("version"),mode=root.get("mode"),rawDry=root.get("dry"),rawParts=root.get("parts");
+   Object document=InvocationJson.owned(raw);if(!(document instanceof Map<?,?>))throw metadataError("object required");
+   Map<String,Object> root=Json.object(document);Object version=root.get("version"),mode=root.get("mode"),rawDry=root.get("dry"),rawParts=root.get("parts");
    if(!InvocationJson.integral(version)||((Number)version).longValue()!=1)throw metadataError("unsupported version");
    if(!Objects.equals(mode,"single")&&!Objects.equals(mode,"builder"))throw metadataError("invalid mode");
    if(!(rawDry instanceof Boolean))throw metadataError("dry must be boolean");dryMode=(Boolean)rawDry;dryKnown=true;
+   keys(root,Set.of("version","mode","dry","parts"));
    if(!(rawParts instanceof List<?> parts)||parts.isEmpty()||mode.equals("single")&&parts.size()!=1)throw metadataError("invalid parts");
    List<String> files=new ArrayList<>();
    for(int i=0;i<parts.size();i++){

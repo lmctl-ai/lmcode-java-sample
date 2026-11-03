@@ -52,7 +52,7 @@ jobs:
         env:
           RUN_NATIVE: '1'
         run: |
-          lmscript --no-preflight test.lms
+          lmscript test.lms
           [[ "$('build/lmcode-java-sample${{ matrix.ext }}' --version | tr -d '\r')" == "lmcode-java-sample $SAMPLE_VERSION" ]]
           mkdir -p dist
           cp 'build/lmcode-java-sample${{ matrix.ext }}' 'dist/lmcode-java-sample-${{ matrix.label }}${{ matrix.ext }}'

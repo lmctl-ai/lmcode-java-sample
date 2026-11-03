@@ -38,7 +38,7 @@ public final class Execution {
             case LOAD_CTX -> { String n=p.contexts.get(r.u16()); Value v=ctx.get(n); if(v==null||v.kind==Value.Kind.NONE) throw error("context variable '"+n+"' was not provided by the host for this run"); stack.add(v); }
             case CALL_FN -> {
               Registry.Binding b=p.imports.get(r.u16());Value[] a=args(stack,r.u8());
-              if(containsDryNull(a))throw VmException.host("dry null cannot be passed to a host callback");
+              if((!ctx.dry()||b.dryCallback!=null)&&!(ctx.dry()&&owner.isResultConversion(b))&&containsDryNull(a))throw VmException.host("dry null cannot be passed to a host callback");
               Value v;
               if(ctx.dry()){
                 if(b.dryCallback==null)v=Stdlib.dryDummy(ctx,b.returns);
@@ -50,10 +50,10 @@ public final class Execution {
             case CALL_METHOD -> {
               Registry.Binding b=p.imports.get(r.u16());Value[] a=args(stack,r.u8());Value self=pop(stack);boolean dry=ctx.dry();
               if(self.kind==Value.Kind.DRY_NULL&&(!dry||!self.isDryNull()))throw VmException.host("invalid dry null provenance in method receiver");
-              if(containsDryNull(a))throw VmException.host("dry null cannot be passed to a host callback");
               Value v;
               if(dry&&b.dryCallback==null)v=Stdlib.dryDummy(ctx,b.returns);
               else{
+                if(containsDryNull(a))throw VmException.host("dry null cannot be passed to a host callback");
                 if(self.isDryNull())throw VmException.host("method "+b.type+"."+b.name+" requires a concrete receiver after dry null");
                 if(self.kind!=Value.Kind.OBJ||!self.objectType().equals(b.type))throw error("method "+b.type+"."+b.name+" called on a "+(self.kind==Value.Kind.OBJ?self.objectType():self.kindName()));
                 v=(dry?b.dryCallback.callback:b.callback).call(ctx,self,a);
@@ -88,6 +88,9 @@ public final class Execution {
             case WHILE_TEST -> { int d=r.i32(); if(!pop(stack).asBool()) jump(r,d,p.code.length); }
             case LOOP_BACK -> jump(r,r.i32(),p.code.length);
           }
+        } catch (OutOfMemoryError failure) {
+          VmException error=VmException.host("allocation failed");
+          Program.Line line=p.lineOf(fault); if(line!=null)error.at(line); throw error;
         } catch (VmException e) { Program.Line line=p.lineOf(fault); if(line!=null)e.at(line); throw e; }
       }
       return Value.none();
