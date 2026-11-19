@@ -1,5 +1,7 @@
 # lmcode Java shop sample
 
+Documentation: [Quick reference](https://www.lmctl.com/tools/lmcode-java-sample/) | [LLM skill](https://www.lmctl.com/tools/lmcode-java-sample/skill.html) | [Guide](https://www.lmctl.com/tools/lmcode-java-sample/guide.html) | [Reference](https://www.lmctl.com/tools/lmcode-java-sample/reference.html)
+
 **Agent entry point:** this is a complete Java 21 host for the shared `lmcode` shop corpus, not another interpreter.
 Read these two files first: [domain and bindings](src/main/java/io/lmctl/sample/Shop.java) and
 [CLI protocol](src/main/java/io/lmctl/sample/Main.java). The Java SDK (`io.lmctl.lmcode`) is vendored
